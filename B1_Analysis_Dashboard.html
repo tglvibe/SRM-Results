@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>B1 Test Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+.header { background: linear-gradient(135deg, #1e293b, #334155); padding: 24px 32px; border-bottom: 1px solid #475569; }
+.header h1 { font-size: 24px; font-weight: 700; color: #f1f5f9; }
+.header p { color: #94a3b8; margin-top: 4px; font-size: 14px; }
+.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+.grid { display: grid; gap: 20px; }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-1 { grid-template-columns: 1fr; }
+.card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
+.card h3 { font-size: 14px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+.stat-card { text-align: center; }
+.stat-card .value { font-size: 36px; font-weight: 800; background: linear-gradient(135deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.stat-card .label { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+.stat-card .sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+.section-title { font-size: 18px; font-weight: 700; color: #f1f5f9; margin: 28px 0 16px 0; padding-bottom: 8px; border-bottom: 2px solid #334155; }
+.chart-container { position: relative; width: 100%; }
+.chart-container canvas { max-height: 300px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { background: #334155; color: #e2e8f0; padding: 10px 12px; text-align: left; font-weight: 600; position: sticky; top: 0; }
+td { padding: 8px 12px; border-bottom: 1px solid #2d3748; }
+tr:hover td { background: #2d3748; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+.badge-green { background: #065f46; color: #6ee7b7; }
+.badge-blue { background: #1e3a5f; color: #93c5fd; }
+.badge-yellow { background: #713f12; color: #fcd34d; }
+.badge-red { background: #7f1d1d; color: #fca5a5; }
+.badge-purple { background: #4c1d95; color: #c4b5fd; }
+.badge-gray { background: #374151; color: #9ca3af; }
+.progress-bar { background: #334155; border-radius: 4px; height: 20px; overflow: hidden; position: relative; }
+.progress-fill { height: 100%; border-radius: 4px; transition: width 0.5s; }
+.progress-label { position: absolute; right: 6px; top: 2px; font-size: 11px; font-weight: 600; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab { padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; border: 1px solid #475569; color: #94a3b8; background: transparent; transition: all 0.2s; }
+.tab.active { background: #3b82f6; color: white; border-color: #3b82f6; }
+.tab:hover:not(.active) { border-color: #60a5fa; color: #e2e8f0; }
+.insight-box { background: #1a2332; border-left: 4px solid #3b82f6; padding: 12px 16px; border-radius: 0 8px 8px 0; margin-bottom: 10px; font-size: 13px; line-height: 1.5; }
+.insight-box strong { color: #60a5fa; }
+.difficulty-bar { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.difficulty-bar .label { width: 50px; font-size: 12px; color: #94a3b8; }
+.difficulty-bar .bar { flex: 1; height: 14px; background: #334155; border-radius: 3px; overflow: hidden; }
+.difficulty-bar .fill { height: 100%; border-radius: 3px; }
+.difficulty-bar .pct { width: 45px; font-size: 12px; text-align: right; }
+@media (max-width: 900px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>B1 Batch - Test Analysis Dashboard</h1>
+  <p>Comprehensive analysis of attendance, performance, and question difficulty | Round 1</p>
+</div>
+<div class="container" id="app"></div>
+
+<script>
+const D = {"attendance":{"total":5448,"present":2433,"present2":393,"absent":2622,"registered":3008,"new":393,"not_registered":2047},"overall_bands":{"C2.1":49,"C2.2":255,"C3":492,"C4":696,"C5":898,"C6":436},"coding_bands":{"C2.1":42,"C2.2":101,"C3":535,"C4":718,"C5":956,"C6":474},"mcq_bands":{"C2.1":633,"C2.2":351,"C3":132,"C4":417,"C5":643,"C6":650},"score_stats":{"coding":{"mean":36.7,"median":35.0,"max":75.0,"min":0.0,"std":13.7,"total":75},"mcq":{"mean":17.2,"median":16.0,"max":30.0,"min":0.0,"std":9.1,"total":30},"overall":{"mean":53.9,"median":55.0,"max":105.0,"min":0.0,"std":20.2,"total":105}},"coding_hist":[{"range":"0-7","count":59},{"range":"7-15","count":118},{"range":"15-22","count":259},{"range":"22-30","count":377},{"range":"30-37","count":485},{"range":"37-45","count":520},{"range":"45-52","count":467},{"range":"52-60","count":313},{"range":"60-67","count":143},{"range":"67-75","count":67}],"mcq_hist":[{"range":"0-3","count":308},{"range":"3-6","count":152},{"range":"6-9","count":170},{"range":"9-12","count":219},{"range":"12-15","count":226},{"range":"15-18","count":280},{"range":"18-21","count":315},{"range":"21-24","count":378},{"range":"24-27","count":428},{"range":"27-30","count":332}],"overall_hist":[{"range":"0-10","count":43},{"range":"10-21","count":127},{"range":"21-31","count":220},{"range":"31-42","count":367},{"range":"42-52","count":432},{"range":"52-63","count":529},{"range":"63-73","count":459},{"range":"73-84","count":375},{"range":"84-94","count":186},{"range":"94-105","count":70}],"batch_performance":[{"batch":"1.00 pm to 3.00 pm","count":979,"avg_coding":36.5,"avg_mcq":17.5,"avg_total":54.0},{"batch":"10.00 am to 12.00 noon","count":448,"avg_coding":35.4,"avg_mcq":16.3,"avg_total":51.8},{"batch":"3.00 pm to 5.00 pm","count":830,"avg_coding":37.1,"avg_mcq":17.3,"avg_total":54.4},{"batch":"8.00 am to 10.00 am","count":551,"avg_coding":37.5,"avg_mcq":17.3,"avg_total":54.8}],"question_analysis":[{"id":"1101","type":"Coding","max_marks":5,"correct_pct":54.7,"avg_gained":2.73,"zero_pct":45.3},{"id":"1102","type":"Coding","max_marks":5,"correct_pct":46.9,"avg_gained":2.35,"zero_pct":53.1},{"id":"1103","type":"Coding","max_marks":5,"correct_pct":26.4,"avg_gained":1.32,"zero_pct":73.6},{"id":"1104","type":"Coding","max_marks":5,"correct_pct":28.9,"avg_gained":1.45,"zero_pct":71.1},{"id":"1105","type":"Coding","max_marks":5,"correct_pct":35.0,"avg_gained":1.75,"zero_pct":65.0},{"id":"1106","type":"Coding","max_marks":5,"correct_pct":70.2,"avg_gained":3.51,"zero_pct":29.8},{"id":"1107","type":"Coding","max_marks":5,"correct_pct":68.6,"avg_gained":3.43,"zero_pct":31.4},{"id":"1108","type":"Coding","max_marks":5,"correct_pct":30.4,"avg_gained":1.52,"zero_pct":69.6},{"id":"1109","type":"Coding","max_marks":5,"correct_pct":60.7,"avg_gained":3.03,"zero_pct":39.3},{"id":"1110","type":"Coding","max_marks":5,"correct_pct":63.8,"avg_gained":3.19,"zero_pct":36.2},{"id":"1111","type":"Coding","max_marks":5,"correct_pct":55.1,"avg_gained":2.75,"zero_pct":44.9},{"id":"1112","type":"Coding","max_marks":5,"correct_pct":51.3,"avg_gained":2.56,"zero_pct":48.7},{"id":"1113","type":"Coding","max_marks":5,"correct_pct":62.4,"avg_gained":3.12,"zero_pct":37.6},{"id":"1114","type":"Coding","max_marks":5,"correct_pct":30.1,"avg_gained":1.51,"zero_pct":69.9},{"id":"1115","type":"Coding","max_marks":5,"correct_pct":49.3,"avg_gained":2.47,"zero_pct":50.7}],"mcq_questions":[{"id":"1116","type":"MCQ","max_marks":2,"correct_pct":76.6,"avg_gained":1.53,"zero_pct":23.4},{"id":"1117","type":"MCQ","max_marks":2,"correct_pct":56.1,"avg_gained":1.12,"zero_pct":43.9},{"id":"1118","type":"MCQ","max_marks":2,"correct_pct":59.9,"avg_gained":1.2,"zero_pct":40.1},{"id":"1119","type":"MCQ","max_marks":2,"correct_pct":58.2,"avg_gained":1.16,"zero_pct":41.8},{"id":"1120","type":"MCQ","max_marks":2,"correct_pct":40.2,"avg_gained":0.8,"zero_pct":59.8},{"id":"1121","type":"MCQ","max_marks":2,"correct_pct":49.9,"avg_gained":1.0,"zero_pct":50.1},{"id":"1122","type":"MCQ","max_marks":2,"correct_pct":70.5,"avg_gained":1.41,"zero_pct":29.5},{"id":"1123","type":"MCQ","max_marks":2,"correct_pct":51.8,"avg_gained":1.04,"zero_pct":48.2},{"id":"1124","type":"MCQ","max_marks":2,"correct_pct":68.8,"avg_gained":1.38,"zero_pct":31.2},{"id":"1125","type":"MCQ","max_marks":2,"correct_pct":57.6,"avg_gained":1.15,"zero_pct":42.4},{"id":"1126","type":"MCQ","max_marks":2,"correct_pct":48.6,"avg_gained":0.97,"zero_pct":51.4},{"id":"1127","type":"MCQ","max_marks":2,"correct_pct":46.5,"avg_gained":0.93,"zero_pct":53.5},{"id":"1128","type":"MCQ","max_marks":2,"correct_pct":58.0,"avg_gained":1.16,"zero_pct":42.0},{"id":"1129","type":"MCQ","max_marks":2,"correct_pct":64.2,"avg_gained":1.28,"zero_pct":35.8},{"id":"1130","type":"MCQ","max_marks":2,"correct_pct":50.3,"avg_gained":1.01,"zero_pct":49.7}],"top_performers":[{"Student Name":"Allen Vinster Joel","OVERALL GAINED":90.0,"CODING GAINED":60.0,"MCQ GAINED":30.0,"FINAL BAND":"C2.1"},{"Student Name":"Karthik A","OVERALL GAINED":90.0,"CODING GAINED":60.0,"MCQ GAINED":30.0,"FINAL BAND":"C2.1"},{"Student Name":"Mugunthan B G","OVERALL GAINED":90.0,"CODING GAINED":60.0,"MCQ GAINED":30.0,"FINAL BAND":"C2.1"},{"Student Name":"Nivedha S","OVERALL GAINED":89.0,"CODING GAINED":65.0,"MCQ GAINED":24.0,"FINAL BAND":"C2.1"},{"Student Name":"Amogh","OVERALL GAINED":89.0,"CODING GAINED":65.0,"MCQ GAINED":24.0,"FINAL BAND":"C2.1"},{"Student Name":"Srivatsan V","OVERALL GAINED":88.0,"CODING GAINED":60.0,"MCQ GAINED":28.0,"FINAL BAND":"C2.1"},{"Student Name":"Swastik Nayak","OVERALL GAINED":88.0,"CODING GAINED":60.0,"MCQ GAINED":28.0,"FINAL BAND":"C2.1"},{"Student Name":"Shashank R","OVERALL GAINED":87.0,"CODING GAINED":65.0,"MCQ GAINED":22.0,"FINAL BAND":"C2.1"},{"Student Name":"Sathish Kumar G","OVERALL GAINED":87.0,"CODING GAINED":65.0,"MCQ GAINED":22.0,"FINAL BAND":"C2.1"},{"Student Name":"Vaibhav Kumar V","OVERALL GAINED":87.0,"CODING GAINED":65.0,"MCQ GAINED":22.0,"FINAL BAND":"C2.1"}],"duplicates":[{"name":"Adithiya N","email":"an9668@srmist.edu.in","attempts":[{"batch":"SEB1","total":83},{"batch":"SEB3","total":33}]},{"name":"Anwesha Roy","email":"ar3294@srmist.edu.in","attempts":[{"batch":"SEB2","total":50},{"batch":"SEB4","total":0}]},{"name":"Bhavya Soni","email":"bs7887@srmist.edu.in","attempts":[{"batch":"SEB2","total":64},{"batch":"SEB3","total":65}]},{"name":"Devika Manoj","email":"dm3072@srmist.edu.in","attempts":[{"batch":"SEB1","total":39},{"batch":"SEB2","total":44}]},{"name":"Euvan M","email":"em7397@srmist.edu.in","attempts":[{"batch":"SEB1","total":37},{"batch":"SEB2","total":42}]},{"name":"Mayank S","email":"mayank@talhelix.com","attempts":[{"batch":"SEB_8AM","total":0},{"batch":"OPN8","total":0}]},{"name":"Madana Parithosh Reddy","email":"mp2963@srmist.edu.in","attempts":[{"batch":"SEB1","total":73},{"batch":"SEB4","total":0}]},{"name":"Monish Sagar B","email":"ms4230@srmist.edu.in","attempts":[{"batch":"SEB2","total":33},{"batch":"OPN8","total":10}]},{"name":"Revathi M","email":"rm1933@srmist.edu.in","attempts":[{"batch":"SEB_8AM","total":78},{"batch":"OPN_8AM","total":63}]},{"name":"Sreeshnav B Sunil","email":"sb1957@srmist.edu.in","attempts":[{"batch":"SEB3","total":22},{"batch":"SEB4","total":29}]},{"name":"Venugopal K","email":"vk4772@srmist.edu.in","attempts":[{"batch":"SEB2","total":45},{"batch":"SEB4","total":0}]}],"reg_vs_new":{"registered":{"count":2428,"avg":54.2},"new":{"count":380,"avg":52.0}}};
+
+const app = document.getElementById('app');
+const bandColors = { 'C2.1':'#22c55e', 'C2.2':'#3b82f6', 'C3':'#a855f7', 'C4':'#f59e0b', 'C5':'#f97316', 'C6':'#ef4444' };
+const bandLabels = { 'C2.1':'>=85%', 'C2.2':'75-84%', 'C3':'65-74%', 'C4':'50-64%', 'C5':'30-49%', 'C6':'<30%' };
+
+function pct(n, t) { return ((n/t)*100).toFixed(1); }
+
+// BUILD HTML
+let html = '';
+
+// KPI Cards
+const a = D.attendance;
+const appeared = a.present + a.present2;
+html += `<div class="grid grid-4" style="margin-bottom:20px">
+  <div class="card stat-card"><h3>Total Students</h3><div class="value">${a.total.toLocaleString()}</div><div class="label">In master database</div></div>
+  <div class="card stat-card"><h3>Appeared</h3><div class="value">${appeared.toLocaleString()}</div><div class="label">${pct(appeared,a.total)}% of total</div><div class="sub">Present: ${a.present} | Walk-in: ${a.present2}</div></div>
+  <div class="card stat-card"><h3>Absent</h3><div class="value">${a.absent.toLocaleString()}</div><div class="label">${pct(a.absent,a.total)}% of total</div><div class="sub">Registered absent: ${a.registered - a.present}</div></div>
+  <div class="card stat-card"><h3>Avg Score</h3><div class="value">${D.score_stats.overall.mean}</div><div class="label">out of ${D.score_stats.overall.total} (${pct(D.score_stats.overall.mean,D.score_stats.overall.total)}%)</div><div class="sub">Median: ${D.score_stats.overall.median}</div></div>
+</div>`;
+
+// Score summary cards
+const ss = D.score_stats;
+html += `<div class="grid grid-3" style="margin-bottom:20px">`;
+for (const [key, label, color] of [['coding','Coding (15 Qs)','#3b82f6'],['mcq','MCQ (15 Qs)','#a855f7'],['overall','Overall','#22c55e']]) {
+  const s = ss[key];
+  html += `<div class="card">
+    <h3>${label}</h3>
+    <div style="display:flex;justify-content:space-between;margin:8px 0">
+      <div><span style="font-size:28px;font-weight:800;color:${color}">${s.mean}</span><span style="color:#64748b;font-size:13px">/${s.total}</span></div>
+      <div style="text-align:right;font-size:12px;color:#94a3b8">Median: ${s.median}<br>Std Dev: ${s.std}<br>Range: ${s.min}-${s.max}</div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" style="width:${(s.mean/s.total*100)}%;background:${color}"></div><div class="progress-label">${pct(s.mean,s.total)}%</div></div>
+  </div>`;
+}
+html += `</div>`;
+
+// Key Insights
+html += `<div class="section-title">Key Insights</div>`;
+const codingEasy = D.question_analysis.filter(q=>q.correct_pct>=60).sort((a,b)=>b.correct_pct-a.correct_pct);
+const codingHard = D.question_analysis.filter(q=>q.correct_pct<35).sort((a,b)=>a.correct_pct-b.correct_pct);
+const mcqEasy = D.mcq_questions.filter(q=>q.correct_pct>=65).sort((a,b)=>b.correct_pct-a.correct_pct);
+const mcqHard = D.mcq_questions.filter(q=>q.correct_pct<45).sort((a,b)=>a.correct_pct-b.correct_pct);
+
+html += `<div class="grid grid-2" style="margin-bottom:20px">
+  <div class="card">
+    <div class="insight-box"><strong>Attendance Rate:</strong> Only ${pct(appeared, a.registered+a.new)}% of eligible students (registered + walk-ins) appeared. ${a.not_registered.toLocaleString()} students in the master were not registered at all.</div>
+    <div class="insight-box"><strong>Walk-in Impact:</strong> ${a.present2} new/unregistered students walked in and took the test, expanding the test pool by ${pct(a.present2, a.present)}% beyond registered attendees.</div>
+    <div class="insight-box"><strong>Registered No-shows:</strong> ${a.registered - a.present} registered students (${pct(a.registered - a.present, a.registered)}%) did not show up for the test.</div>
+  </div>
+  <div class="card">
+    <div class="insight-box"><strong>Coding is the differentiator:</strong> Coding avg is ${pct(ss.coding.mean,ss.coding.total)}% vs MCQ avg ${pct(ss.mcq.mean,ss.mcq.total)}%. Students score relatively better on MCQs.</div>
+    <div class="insight-box"><strong>Hardest Coding Qs:</strong> ${codingHard.map(q=>`Q${q.id} (${q.correct_pct}%)`).join(', ')} - over 65% got zero marks on these.</div>
+    <div class="insight-box"><strong>Easiest Coding Qs:</strong> ${codingEasy.map(q=>`Q${q.id} (${q.correct_pct}%)`).join(', ')} - strong performance here.</div>
+    <div class="insight-box"><strong>Duplicates Found:</strong> 11 students appeared in multiple batches. Best scores were retained.</div>
+  </div>
+</div>`;
+
+// Charts section
+html += `<div class="section-title">Performance Distribution</div>
+<div class="grid grid-2" style="margin-bottom:20px">
+  <div class="card"><h3>Overall Score Distribution</h3><div class="chart-container"><canvas id="overallHist"></canvas></div></div>
+  <div class="card"><h3>Final Band Distribution</h3><div class="chart-container"><canvas id="bandChart"></canvas></div></div>
+</div>
+<div class="grid grid-2" style="margin-bottom:20px">
+  <div class="card"><h3>Coding Score Distribution</h3><div class="chart-container"><canvas id="codingHist"></canvas></div></div>
+  <div class="card"><h3>MCQ Score Distribution</h3><div class="chart-container"><canvas id="mcqHist"></canvas></div></div>
+</div>`;
+
+// Question Difficulty
+html += `<div class="section-title">Question-Level Analysis</div>
+<div class="grid grid-2" style="margin-bottom:20px">
+  <div class="card"><h3>Coding Questions - Correct Answer Rate</h3><div class="chart-container"><canvas id="codingQChart"></canvas></div></div>
+  <div class="card"><h3>MCQ Questions - Correct Answer Rate</h3><div class="chart-container"><canvas id="mcqQChart"></canvas></div></div>
+</div>`;
+
+// Batch Performance
+html += `<div class="section-title">Batch-wise Performance</div>
+<div class="grid grid-1" style="margin-bottom:20px">
+  <div class="card"><h3>Average Scores by Batch Time</h3><div class="chart-container"><canvas id="batchChart"></canvas></div></div>
+</div>`;
+
+// Band comparison
+html += `<div class="grid grid-3" style="margin-bottom:20px">`;
+for (const [bands, title] of [[D.coding_bands,'Coding Bands'],[D.mcq_bands,'MCQ Bands'],[D.overall_bands,'Overall Bands']]) {
+  const total = Object.values(bands).reduce((a,b)=>a+b,0);
+  html += `<div class="card"><h3>${title}</h3>`;
+  for (const [b,c] of Object.entries(bands)) {
+    const p = (c/total*100).toFixed(1);
+    html += `<div class="difficulty-bar">
+      <div class="label" style="width:40px;color:${bandColors[b]};font-weight:700">${b}</div>
+      <div style="width:55px;font-size:11px;color:#64748b">${bandLabels[b]}</div>
+      <div class="bar"><div class="fill" style="width:${p}%;background:${bandColors[b]}"></div></div>
+      <div class="pct">${c} <span style="color:#64748b">(${p}%)</span></div>
+    </div>`;
+  }
+  html += `</div>`;
+}
+html += `</div>`;
+
+// Top Performers
+html += `<div class="section-title">Top 10 Performers</div>
+<div class="card" style="margin-bottom:20px;overflow-x:auto">
+<table><thead><tr><th>#</th><th>Student Name</th><th>Coding (75)</th><th>MCQ (30)</th><th>Total (105)</th><th>%</th><th>Band</th></tr></thead><tbody>`;
+D.top_performers.forEach((s,i) => {
+  const p = ((s['OVERALL GAINED']/105)*100).toFixed(1);
+  html += `<tr><td>${i+1}</td><td>${s['Student Name']}</td><td>${s['CODING GAINED']}</td><td>${s['MCQ GAINED']}</td><td style="font-weight:700;color:#22c55e">${s['OVERALL GAINED']}</td><td>${p}%</td><td><span class="badge badge-green">${s['FINAL BAND']}</span></td></tr>`;
+});
+html += `</tbody></table></div>`;
+
+// Duplicates
+html += `<div class="section-title">Duplicate Entries (11 Students)</div>
+<div class="card" style="margin-bottom:20px;overflow-x:auto">
+<table><thead><tr><th>Student</th><th>Email</th><th>Attempt 1</th><th>Attempt 2</th><th>Best Score Used</th></tr></thead><tbody>`;
+D.duplicates.forEach(d => {
+  const best = Math.max(...d.attempts.map(a=>a.total));
+  html += `<tr><td>${d.name}</td><td style="font-size:12px;color:#94a3b8">${d.email}</td>`;
+  d.attempts.forEach(a => {
+    const isBest = a.total === best;
+    html += `<td>${a.batch}: <span style="font-weight:${isBest?700:400};color:${isBest?'#22c55e':'#94a3b8'}">${a.total}/105</span></td>`;
+  });
+  html += `<td style="font-weight:700;color:#22c55e">${best}/105</td></tr>`;
+});
+html += `</tbody></table></div>`;
+
+// Attendance breakdown
+html += `<div class="section-title">Attendance Breakdown</div>
+<div class="grid grid-2" style="margin-bottom:20px">
+  <div class="card"><h3>By Registration Status</h3><div class="chart-container"><canvas id="regChart"></canvas></div></div>
+  <div class="card"><h3>Registered vs Walk-in Performance</h3><div class="chart-container"><canvas id="regPerfChart"></canvas></div></div>
+</div>`;
+
+// Unmatched students note
+html += `<div class="card" style="margin-bottom:20px;border-left:4px solid #f59e0b">
+  <h3 style="color:#f59e0b">Data Notes</h3>
+  <p style="font-size:13px;line-height:1.6;margin-top:8px">
+    <strong>18 present students</strong> in the Result Master could not be matched to RAW RESULT data (5 registered, 13 new/walk-in). Their marks columns remain empty.<br>
+    <strong>3 emails</strong> in RAW RESULT were not found in Result Master (ck8112, yb3694, mayank@talhelix.com).<br>
+    <strong>Percentage formulas</strong> in the original file were inverted (TOTAL/GAINED instead of GAINED/TOTAL) - this has been corrected in the processed file.
+  </p>
+</div>`;
+
+app.innerHTML = html;
+
+// CHARTS
+const chartDefaults = { responsive: true, maintainAspectRatio: true, plugins: { legend: { labels: { color: '#94a3b8', font: { size: 11 } } } }, scales: { x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#1e293b' } }, y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: '#334155' } } } };
+
+// Overall histogram
+new Chart(document.getElementById('overallHist'), {
+  type: 'bar',
+  data: { labels: D.overall_hist.map(h=>h.range), datasets: [{ label: 'Students', data: D.overall_hist.map(h=>h.count), backgroundColor: '#3b82f6', borderRadius: 4 }] },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+});
+
+// Band doughnut
+new Chart(document.getElementById('bandChart'), {
+  type: 'doughnut',
+  data: { labels: Object.keys(D.overall_bands).map(b=>`${b} (${bandLabels[b]})`), datasets: [{ data: Object.values(D.overall_bands), backgroundColor: Object.keys(D.overall_bands).map(b=>bandColors[b]), borderWidth: 0 }] },
+  options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, padding: 8 } } } }
+});
+
+// Coding histogram
+new Chart(document.getElementById('codingHist'), {
+  type: 'bar',
+  data: { labels: D.coding_hist.map(h=>h.range), datasets: [{ label: 'Students', data: D.coding_hist.map(h=>h.count), backgroundColor: '#60a5fa', borderRadius: 4 }] },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+});
+
+// MCQ histogram
+new Chart(document.getElementById('mcqHist'), {
+  type: 'bar',
+  data: { labels: D.mcq_hist.map(h=>h.range), datasets: [{ label: 'Students', data: D.mcq_hist.map(h=>h.count), backgroundColor: '#a855f7', borderRadius: 4 }] },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } } }
+});
+
+// Coding question chart
+new Chart(document.getElementById('codingQChart'), {
+  type: 'bar',
+  data: { labels: D.question_analysis.map(q=>'Q'+q.id), datasets: [
+    { label: 'Correct %', data: D.question_analysis.map(q=>q.correct_pct), backgroundColor: D.question_analysis.map(q => q.correct_pct >= 60 ? '#22c55e' : q.correct_pct >= 40 ? '#f59e0b' : '#ef4444'), borderRadius: 4 }
+  ] },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } }, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, max: 100 } } }
+});
+
+// MCQ question chart
+new Chart(document.getElementById('mcqQChart'), {
+  type: 'bar',
+  data: { labels: D.mcq_questions.map(q=>'Q'+q.id), datasets: [
+    { label: 'Correct %', data: D.mcq_questions.map(q=>q.correct_pct), backgroundColor: D.mcq_questions.map(q => q.correct_pct >= 60 ? '#22c55e' : q.correct_pct >= 40 ? '#f59e0b' : '#ef4444'), borderRadius: 4 }
+  ] },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } }, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, max: 100 } } }
+});
+
+// Batch performance
+new Chart(document.getElementById('batchChart'), {
+  type: 'bar',
+  data: { labels: D.batch_performance.map(b=>b.batch), datasets: [
+    { label: 'Avg Coding', data: D.batch_performance.map(b=>b.avg_coding), backgroundColor: '#3b82f6', borderRadius: 4 },
+    { label: 'Avg MCQ', data: D.batch_performance.map(b=>b.avg_mcq), backgroundColor: '#a855f7', borderRadius: 4 },
+  ] },
+  options: { ...chartDefaults, scales: { ...chartDefaults.scales, x: { ...chartDefaults.scales.x, stacked: false } } }
+});
+
+// Registration pie
+new Chart(document.getElementById('regChart'), {
+  type: 'doughnut',
+  data: { labels: ['Registered Present','Registered Absent','Walk-in (New)','Not Registered'], datasets: [{ data: [D.attendance.present, D.attendance.registered - D.attendance.present, D.attendance.present2, D.attendance.not_registered], backgroundColor: ['#22c55e','#ef4444','#3b82f6','#64748b'], borderWidth: 0 }] },
+  options: { responsive: true, plugins: { legend: { position: 'right', labels: { color: '#94a3b8', font: { size: 11 }, padding: 8 } } } }
+});
+
+// Reg vs New performance
+new Chart(document.getElementById('regPerfChart'), {
+  type: 'bar',
+  data: { labels: ['Registered','Walk-in (New)'], datasets: [{ label: 'Avg Total Score', data: [D.reg_vs_new.registered.avg, D.reg_vs_new.new.avg], backgroundColor: ['#22c55e','#3b82f6'], borderRadius: 8, barThickness: 60 }] },
+  options: { ...chartDefaults, plugins: { ...chartDefaults.plugins, legend: { display: false } }, scales: { ...chartDefaults.scales, y: { ...chartDefaults.scales.y, max: 105, beginAtZero: true } } }
+});
+</script>
+</body>
+</html>
